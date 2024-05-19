@@ -1,0 +1,78 @@
+version: '3.8'
+services:
+  db_master:    
+    env_file: .env
+    build:
+      context: ./db
+      args:
+        DB_REPL_USER: ${DB_REPL_USER}
+        DB_REPL_PASSWORD: ${DB_REPL_PASSWORD}
+    volumes:
+      - logs:/var/log/postgresql/
+    env_file: .env
+    ports:
+      - "5432:5432"
+    container_name: ${DB_HOST}
+    networks:
+      - db_net
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_DB: ${DB_DATABASE}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_HOST_AUTH_METHOD: "scram-sha-256\nhost replication all 0.0.0.0/0 md5"
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    command: |
+      postgres
+        -c listen_addresses='*'
+        -c wal_level=replica  
+        -c max_wal_senders=10
+        -c wal_log_hints=on
+        -c archive_mode=on
+        -c archive_command='cp %p /tmp/%f'
+        -c log_directory='/var/log/postgresql'
+        -c logging_collector=on
+        -c log_replication_commands=on
+  db_repl:
+    env_file: .env
+    build:
+      context: ./db_repl
+    ports:
+      - "5433:5432"
+    container_name: db_repl
+    networks:
+      - db_net
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_DATABASE}
+      PGUSER: ${DB_REPL_USER}
+      PGPASSWORD: ${DB_REPL_PASSWORD}
+    command: |
+      bash -c "
+      rm -rf /var/lib/postgresql/data/*
+      until pg_basebackup -R -U ${DB_REPL_USER} -h db_master -D /var/lib/postgresql/data -P -v
+      do
+      echo 'Waiting for primary to connect...'
+      sleep 1s
+      done;
+      echo 'Backup done, starting replica...'
+      chown -R ${DB_USER}:${DB_USER} /var/lib/postgresql/data
+      chmod 0700 /var/lib/postgresql/data
+      su - ${DB_USER} -c 'exec /usr/lib/postgresql/16/bin/postgres -D /var/lib/postgresql/data'
+      ${DB_USER}
+      "
+    depends_on:
+      - db_master
+  bot:
+    env_file: .env
+    build:
+      context: ./bot
+    container_name: bot
+    networks:
+      - db_net
+networks:
+  db_net:
+    driver: bridge 
+
+volumes:
+  logs:
+    name: postgres_logs
