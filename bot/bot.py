@@ -311,7 +311,7 @@ def get_services(update, context):
 def get_repl_logs(update, context):
     try:
         ssh_client = get_ssh_client()
-        stdin, stdout, stderr = ssh_client.exec_command('cat /var/lib/docker/volumes/postgres_logs/_data/* | grep -A 40 "received replication command"')
+        stdin, stdout, stderr = ssh_client.exec_command('cat /var/lib/docker/volumes/postgres_logs/_data/* | grep -A 40 "received replication command\|получена команда репликации"')
         logs_status = stdout.read().decode('utf-8')
         update.message.reply_text(logs_status)
     except Exception as e:
