@@ -47,7 +47,7 @@ PermitRootLogin yes
 PermitRootLogin yes
 ```
 
-4. Отредактировать файл inventory
+4. Отредактировать файл inventory. TOKEN для телеграм бота можно найти в блоке .env отчета
 
 5. Выполнить запуск командой `ansible-playbook playbook-tg-bot.yml`
 
