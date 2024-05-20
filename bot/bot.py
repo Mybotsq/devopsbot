@@ -209,7 +209,7 @@ def get_w(update, context):
 def get_auths(update, context):
     try:
         ssh_client = get_ssh_client()
-        stdin, stdout, stderr = ssh_client.exec_command('w')
+        stdin, stdout, stderr = ssh_client.exec_command('last -n 10')
         auths_info = stdout.read().decode('utf-8')
         update.message.reply_text(auths_info)
     except Exception as e:
@@ -233,7 +233,7 @@ def get_critical(update, context):
 def get_ps(update, context):
     try:
         ssh_client = get_ssh_client()
-        stdin, stdout, stderr = ssh_client.exec_command('ps')
+        stdin, stdout, stderr = ssh_client.exec_command('ps | head -c 4090')
         processes_info = stdout.read().decode('utf-8')
         update.message.reply_text(processes_info)
     except Exception as e:
@@ -245,7 +245,7 @@ def get_ps(update, context):
 def get_ss(update, context):
     try:
         ssh_client = get_ssh_client()
-        stdin, stdout, stderr = ssh_client.exec_command('ss -tulpn')
+        stdin, stdout, stderr = ssh_client.exec_command('ss -tulpn | head -c 4090')
         ports_info = stdout.read().decode('utf-8')
         update.message.reply_text(ports_info)
     except Exception as e:
@@ -268,7 +268,7 @@ def list_packages(update, context):
     if user_choice == '1':
         try:
             ssh_client = get_ssh_client()
-            stdin, stdout, stderr = ssh_client.exec_command('apt list --installed | head')
+            stdin, stdout, stderr = ssh_client.exec_command('apt list --installed | head -c 4090')
             installed_packages = stdout.read().decode('utf-8')
             update.message.reply_text(installed_packages)
         except Exception as e:
@@ -302,7 +302,7 @@ def get_services(update, context):
     try:
         ssh_client = get_ssh_client()
         # Команда для получения статуса всех сервисов
-        stdin, stdout, stderr = ssh_client.exec_command('service --status-all')
+        stdin, stdout, stderr = ssh_client.exec_command('service --status-all | head -c 4090')
         services_status = stdout.read().decode('utf-8')
         update.message.reply_text(services_status)
     except Exception as e:
