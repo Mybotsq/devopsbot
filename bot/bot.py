@@ -130,17 +130,7 @@ def get_release(update, context):
         update.message.reply_text(release_info)
     except Exception as e:
         update.message.reply_text(f"Ошибка при получении информации о релизе: {e}")
-    finally:
-        ssh_client.close()
-        
-def get_release(update, context):
-    try:
-        ssh_client = get_ssh_client()
-        stdin, stdout, stderr = ssh_client.exec_command('cat /etc/*release')
-        release_info = stdout.read().decode('utf-8')
-        update.message.reply_text(release_info)
-    except Exception as e:
-        update.message.reply_text(f"Ошибка при получении информации о релизе: {e}")
+        logging.error("Ошибка при получении информации о релизе", e)
     finally:
         ssh_client.close()
         
@@ -152,6 +142,7 @@ def get_uname(update, context):
         update.message.reply_text(uname_info)
     except Exception as e:
         update.message.reply_text(f"Ошибка при получении информации о системе: {e}")
+        logging.error("Ошибка при получении информации о системе", e)
     finally:
         ssh_client.close()
 
@@ -163,6 +154,7 @@ def get_uptime(update, context):
         update.message.reply_text(uptime_info)
     except Exception as e:
         update.message.reply_text(f"Ошибка при получении информации о времени работы: {e}")
+        logging.error("Ошибка при получении информации о времени работы", e)
     finally:
         ssh_client.close()
         
@@ -174,6 +166,7 @@ def get_df(update, context):
         update.message.reply_text(uptime_info)
     except Exception as e:
         update.message.reply_text(f"Ошибка при получении информации о дисках: {e}")
+        logging.error("Ошибка при получении информации о дисках", e)
     finally:
         ssh_client.close()
         
@@ -185,6 +178,7 @@ def get_free(update, context):
         update.message.reply_text(uptime_info)
     except Exception as e:
         update.message.reply_text(f"Ошибка при получении информации о свободной памяти: {e}")
+        logging.error("Ошибка при получении информации о свободной памяти", e)
     finally:
         ssh_client.close()
         
@@ -196,6 +190,7 @@ def get_mpstat(update, context):
         update.message.reply_text(uptime_info)
     except Exception as e:
         update.message.reply_text(f"Ошибка при получении информации о производительности: {e}")
+        logging.error("Ошибка при получении информации о производительности", e)
     finally:
         ssh_client.close()
         
@@ -207,6 +202,7 @@ def get_w(update, context):
         update.message.reply_text(w_info)
     except Exception as e:
         update.message.reply_text(f"Ошибка при получении информации о пользователях: {e}")
+        logging.error("Ошибка при получении информации о пользователях", e)
     finally:
         ssh_client.close()
         
@@ -218,6 +214,7 @@ def get_auths(update, context):
         update.message.reply_text(auths_info)
     except Exception as e:
         update.message.reply_text(f"Ошибка при получении логов входа: {e}")
+        logging.error("Ошибка при получении логов входа", e)
     finally:
         ssh_client.close()
         
@@ -229,6 +226,7 @@ def get_critical(update, context):
         update.message.reply_text(auths_info)
     except Exception as e:
         update.message.reply_text(f"Ошибка при получении критических логов: {e}")
+        logging.error("Ошибка при получении критических логов", e)
     finally:
         ssh_client.close()
         
@@ -240,6 +238,7 @@ def get_ps(update, context):
         update.message.reply_text(processes_info)
     except Exception as e:
         update.message.reply_text(f"Ошибка при получении информации о процессах: {e}")
+        logging.error("Ошибка при получении информации о процессах", e)
     finally:
         ssh_client.close()  
         
@@ -251,6 +250,7 @@ def get_ss(update, context):
         update.message.reply_text(ports_info)
     except Exception as e:
         update.message.reply_text(f"Ошибка при получении информации об используемых портах: {e}")
+        logging.error("Ошибка при получении информации об используемых портах", e)
     finally:
         ssh_client.close()    
         
@@ -273,6 +273,7 @@ def list_packages(update, context):
             update.message.reply_text(installed_packages)
         except Exception as e:
             update.message.reply_text(f"Ошибка при получении списка установленных пакетов: {e}")
+            logging.error("Ошибка при получении списка установленных пакетов", e)
         finally:
             ssh_client.close()
         return ConversationHandler.END
@@ -292,6 +293,7 @@ def search_package(update, context):
         update.message.reply_text(package_info if package_info else "Пакет не найден.")
     except Exception as e:
         update.message.reply_text(f"Ошибка при поиске информации о пакете: {e}")
+        logging.error("Ошибка при поиске информации о пакете", e)
     finally:
         ssh_client.close()
     return ConversationHandler.END
@@ -305,6 +307,7 @@ def get_services(update, context):
         update.message.reply_text(services_status)
     except Exception as e:
         update.message.reply_text(f"Ошибка при получении статуса сервисов: {e}")
+        logging.error("Ошибка при получении статуса сервисов", e)
     finally:
         ssh_client.close()
         
@@ -316,6 +319,7 @@ def get_repl_logs(update, context):
         update.message.reply_text(logs_status)
     except Exception as e:
         update.message.reply_text(f"Ошибка при получении логов: {e}")
+        logging.error("Ошибка при получении логов", e)
     finally:
         ssh_client.close()
         
@@ -329,6 +333,7 @@ def get_emails(update, context):
         update.message.reply_text("\n".join([str(row) for row in data]))
     except (Exception, Error) as error:
         update.message.reply_text(f"Ошибка при работе с PostgreSQL: {error}")
+        logging.error("Ошибка при работе с PostgreSQL: %s", error)
     finally:
         if connection is not None:
             cursor.close()
@@ -345,6 +350,7 @@ def get_phonenumbers(update, context):
         update.message.reply_text("\n".join([str(row) for row in data]))
     except (Exception, Error) as error:
         update.message.reply_text(f"Ошибка при работе с PostgreSQL: {error}")
+        logging.error("Ошибка при работе с PostgreSQL: %s", error)
     finally:
         if connection is not None:
             cursor.close()
@@ -363,6 +369,7 @@ def saveEmailData(update, context):
             update.message.reply_text("email адреса успешно сохранены в базу данных")
         except (Exception, Error) as error:
             update.message.reply_text(f"Ошибка при работе с PostgreSQL: {error}")
+            logging.error("Ошибка при работе с PostgreSQL: %s", error)
     else:
         update.message.reply_text("Отмена сохранения")
         
@@ -384,6 +391,7 @@ def savePhoneNumberData(update, context):
             update.message.reply_text("Телефонные номера успешно сохранены в базу данных")
         except (Exception, Error) as error:
             update.message.reply_text(f"Ошибка при работе с PostgreSQL: {error}")
+            logging.error("Ошибка при работе с PostgreSQL: %s", error)
     else:
         update.message.reply_text("Отмена сохранения")
         
@@ -466,4 +474,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
