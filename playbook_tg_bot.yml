@@ -1,0 +1,178 @@
+- name: Обновление репозиториев и установка PostgreSQL 15
+  hosts: all
+  become: yes
+  tasks:
+    - name: Импорт ключа репозитория PostgreSQL
+      ansible.builtin.apt_key:
+        url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
+        state: present
+
+    - name: Добавление репозитория PostgreSQL
+      ansible.builtin.apt_repository:
+        repo: deb http://apt.postgresql.org/pub/repos/apt/ focal-pgdg main
+        state: present
+
+    - name: Обновление списка пакетов
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Установка необходимых пакетов PostgreSQL 15
+      ansible.builtin.apt:
+        name: "postgresql-15"
+        state: present
+
+    - name: Установка менеджера Git
+      ansible.builtin.apt:
+        name: git
+        state: latest
+
+- name: Конфигурация мастер-сервера PostgreSQL
+  hosts: host1
+  become: yes
+  tasks:
+    - name: Проверка установки pip
+      ansible.builtin.apt:
+        name: python3-pip
+        state: present
+        update_cache: yes
+
+    - name: Клонирование репозитория GitHub
+      ansible.builtin.git:
+        repo: "{{ GIT }}"
+        dest: "{{ WORKDIR }}"
+        version: docker
+        clone: yes
+        update: yes
+
+    - name: Установка зависимостей для Telegram бота
+      ansible.builtin.pip:
+        requirements: "{{ WORKDIR }}/bot/requirements.txt"
+        executable: pip
+
+    - name: Заполнение init_db.sql переменными из inventory
+      ansible.builtin.template:
+        src: init_db.sql
+        dest: "{{ WORKDIR }}/init_db.sql"
+        owner: postgres
+        group: postgres
+        mode: '0777'
+   
+    - name: Создание папки архивации /var/lib/postgresql/postgres_data/archive/
+      become_user: postgres
+      ansible.builtin.file:
+        path: /var/lib/postgresql/postgres_data/archive/
+        state: directory
+
+    - name: Очистка от логов (если есть)
+      file:
+        path: /var/lib/docker/volumes/postgres_logs/_data
+        state: absent
+
+    - name: Создание папки для логов PostgreSQL
+      file:
+        path: /var/lib/docker/volumes/postgres_logs/_data
+        state: directory
+        owner: postgres
+        group: postgres
+        mode: '0777'
+
+    - name: Редактирование postgresql.conf
+      blockinfile:
+        path: /etc/postgresql/15/main/postgresql.conf
+        block: |
+          listen_addresses = '*'
+          port = {{ DB_PORT }}
+          max_wal_senders=10
+          wal_level=replica
+          max_replication_slots=10
+          hot_standby_feedback=on
+          log_replication_commands=on
+          logging_collector = on
+          log_directory = '/var/lib/docker/volumes/postgres_logs/_data'
+          archive_mode = on
+          archive_command = 'cp %p /var/lib/postgresql/postgres_data/archive/%f'
+        marker: "# {mark} ANSIBLE INSERT BLOCK" 
+        backup: yes 
+    
+    - name: Редактирование pg_hba.conf
+      blockinfile:
+        path: /etc/postgresql/15/main/pg_hba.conf
+        block: |
+          local all postgres peer
+          host replication all {{ hostvars['host2']['ansible_host'] }}/24 scram-sha-256
+          host all all all scram-sha-256
+        marker: "# {mark} ANSIBLE INSERT BLOCK"
+        backup: yes
+
+    - name: Инициализация базы данных через init_db.sql
+      become: true
+      become_user: postgres
+      shell: /usr/bin/psql -a -f "{{ WORKDIR }}/init_db.sql"
+
+    - name: Перезапуск PostgreSQL
+      service:
+        name: postgresql
+        state: restarted
+
+- name: Конфигурация сервера-репликации PostgreSQL
+  hosts: host2
+  become: true
+  tasks:
+    - name: Остановка службы PostgreSQL
+      service:
+        name: postgresql
+        state: stopped
+
+    - name: Очистка папки для репликации
+      file:
+        path: /var/lib/postgresql/15/main
+        state: absent
+
+    - name: Создание папки
+      file:
+        path: /var/lib/postgresql/15/main
+        state: directory
+        owner: postgres
+        group: postgres
+        mode: '0700' 
+
+    - name: Запуск репликации
+      shell: >
+        pg_basebackup -R -h {{ DB_HOST }} -p {{ DB_PORT }} -U {{ DB_REPL_USER }} -D /var/lib/postgresql/15/main -P -v
+      become_user: postgres
+      environment:
+        PGPASSWORD: "{{ DB_REPL_PASSWORD }}"
+
+    - name: Перезапуск PostgreSQL
+      service:
+        name: postgresql
+        state: restarted
+
+- name: Запуск Telegram бота
+  hosts: host1
+  become: yes
+  tasks:
+    - name: Генерация .env файла
+      blockinfile:
+        path: "{{ WORKDIR }}/.env"
+        block: |
+          TOKEN = "{{ TOKEN }}"
+          RM_HOST = "{{ RM_HOST }}"
+          RM_PORT = "{{ RM_PORT }}"
+          RM_USER = "{{ RM_USER }}"
+          RM_PASSWORD = "{{ RM_PASSWORD }}"
+          DB_USER = "{{ DB_USER }}"
+          DB_PASSWORD = "{{ DB_PASSWORD }}"
+          DB_HOST = "{{ DB_HOST }}"
+          DB_PORT = "{{ DB_PORT }}"
+          DB_DATABASE = "{{ DB_DATABASE }}"
+          DB_REPL_USER = "{{ DB_REPL_USER }}"
+          DB_REPL_PASSWORD = "{{ DB_REPL_PASSWORD }}"
+          DB_REPL_HOST = "{{ DB_REPL_HOST }}"
+          DB_REPL_PORT = "{{ DB_REPL_PORT }}"
+        create: yes
+
+    - name: Запуск python бота
+      command: python3 "{{ WORKDIR }}/bot/bot.py"
+      environment:
+        ENV_FILE: "{{ WORKDIR }}/.env"
